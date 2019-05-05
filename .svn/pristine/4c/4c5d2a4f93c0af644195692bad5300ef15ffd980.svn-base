@@ -1,0 +1,12 @@
+package gov.gwssi.pdfSign;
+
+import java.io.FileNotFoundException;
+
+import javax.jws.WebService;
+
+@WebService
+public interface PDFSignI {
+	public String wsPdfSign(String filepath, String savepath, String xcbh, String xkbz, String frPath) throws FileNotFoundException;
+	
+	public String fjPdfSign(String fjPaths, String savePath, String fjpdfPath) throws FileNotFoundException;
+}

@@ -1,0 +1,300 @@
+package gov.gwssi.pdfSign;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.jws.WebService;
+
+import com.esa2000.NXServerSignShell;
+import com.esa2000.pdfsign.util.NXServerSignShellUtils;
+import com.fr.base.FRContext;
+import com.fr.dav.LocalEnv;
+import com.fr.general.ModuleContext;
+import com.fr.io.TemplateWorkBookIO;
+import com.fr.io.exporter.PDFExporter;
+import com.fr.main.TemplateWorkBook;
+import com.fr.main.workbook.ResultWorkBook;
+import com.fr.report.module.EngineModule;
+import com.fr.stable.WriteActor;
+import com.fr.third.org.hsqldb.lib.StringUtil;
+
+import gov.gwssi.util.Conver2Pdf;
+
+@WebService
+public class PDFSignImpl  implements PDFSignI {
+	
+	public String wsPdfSign(String filepath, String savepath, String xcbh, String xkbz, String frPath, String wsbz) throws FileNotFoundException{
+		String result = "";
+		File filedir = new File(filepath);
+		if(!filedir.exists()){  
+			filedir.mkdirs();  
+        }
+		File savedir = new File(savepath);
+		if(!savedir.exists()){  
+			savedir.mkdirs();  
+        }
+		String names = "";
+		if (wsbz.equals("0")) {
+			names = cptTopdfWt(xcbh, xkbz, filepath, frPath);
+		} else {
+			names = cptTopdfSt(xcbh, filepath, frPath);
+		}
+		
+		File file = new File(filepath);
+		if (!file.isDirectory()) {
+			System.out.println("path=" + file.getPath());
+			System.out.println("name=" + file.getName());
+
+		} else if (file.isDirectory()) {
+			String[] filelist = file.list();
+			for (int i = 0; i < filelist.length; i++) {
+				File readfile = new File(filepath + "\\" + filelist[i]);
+				if (!readfile.isDirectory()) {
+					System.out.println("path=" + readfile.getPath());
+					System.out.println("name=" + readfile.getName());
+					result = sigh(filepath + "\\" + filelist[i], savepath + "\\" + filelist[i]);
+					if ("0".equals(result)) {
+						readfile.delete();
+					}
+				} 
+			}
+		}
+		return result + "," + names;
+	}
+	
+	/**
+	 * pdf文件签章
+	 */
+	public String fjPdfSign(String fjPaths, String savePath, String fjpdfPath){
+		String result = "";
+		for (String filepath : fjPaths.split(",")) {
+			if (!StringUtil.isEmpty(filepath)) {
+				String filename = filepath.substring(filepath.lastIndexOf("\\"), filepath.lastIndexOf("."));
+				String extend = filepath.substring(filepath.lastIndexOf(".")+1);
+				try {
+					Conver2Pdf.cover2Pdf(extend,filepath,fjpdfPath,filename);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		File file = new File(fjpdfPath);
+		if (!file.isDirectory()) {
+			System.out.println("path=" + file.getPath());
+			System.out.println("name=" + file.getName());
+		} else if (file.isDirectory()) {
+			String[] filelist = file.list();
+			for (int i = 0; i < filelist.length; i++) {
+				File readfile = new File(fjpdfPath + "\\" + filelist[i]);
+				if (!readfile.isDirectory()) {
+					System.out.println("path=" + readfile.getPath());
+					System.out.println("name=" + readfile.getName());
+					result = sigh(fjpdfPath + "\\" + filelist[i], savePath + "\\" + filelist[i]);
+					if ("0".equals(result)) {
+						readfile.delete();
+					} else {
+						break;
+					}
+				} 
+			}
+		}
+		return result;
+	}
+	/**
+	 * 
+	 * @param filepath pdf文件路径
+	 * @param savepath 签章保存路径
+	 */
+	private String sigh(String filepath, String savepath) {
+		String result = "";
+		String orgcpde ="11301000000";
+		String sealcpde ="52AB3334BBED44C8D5A7D21273388E78";
+		boolean TSA_type = false;
+		verifySign(filepath);
+		result = signByPosition(filepath, savepath, orgcpde,sealcpde, 125, 123, 1, TSA_type,"0", 0.7f);
+		return result;
+	}
+	
+	/**
+	 * @param xcbh
+	 * @param xkbz
+	 */
+	private String cptTopdfWt(String xcbh, String xkbz, String filepath, String frPath) {
+		String names = "";
+		try {
+			FRContext.setCurrentEnv(new LocalEnv(frPath));
+			ModuleContext.startModule(EngineModule.class.getName()); // ��ȡ�����µ�ģ���ļ�
+			Map<String,String> paramap = new HashMap<String,String>();
+			paramap.put("xcbh", xcbh);
+			// wt
+			TemplateWorkBook workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(),"xc//ws//wth.cpt");
+			ResultWorkBook result = workbook.execute(paramap, new WriteActor());
+			OutputStream outputstream = new FileOutputStream(new File(filepath + xcbh + "_税收违法案件协查函.pdf"));
+			PDFExporter PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_税收违法案件协查函.pdf" + ",";
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//wtaj.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_委托协查情况表.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_委托协查情况表.pdf" + ",";
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//wtxcyq.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_委托协查要求表.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_委托协查要求表.pdf" + ",";
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//wtqd.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_委托协查凭证清单.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_委托协查凭证清单.pdf" + ",";
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//wthw.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_委托协查凭证货物清单.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_委托协查凭证货物清单.pdf" + ",";
+			
+			if (xkbz.equals("Y")) {
+				PdfExport.export(outputstream, result);
+				workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//xk.cpt");
+				result = workbook.execute(paramap, new WriteActor());
+				outputstream = new FileOutputStream(new File(filepath + xcbh+ "_已证实虚开通知单.pdf"));
+				PdfExport = new PDFExporter();
+				PdfExport.export(outputstream, result);
+				names += xcbh + "_已证实虚开通知单.pdf" + ",";
+			}
+			paramap.clear();
+			outputstream.close();
+			ModuleContext.stopModules();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return names;
+	}
+
+	/**
+	 * 
+	 * @param xcbh
+	 * @param filepath
+	 * @param frPath
+	 * @return
+	 */
+	private String cptTopdfSt(String xcbh, String filepath, String frPath) {
+		String names = "";
+//		System.out.println("-----��ʼ��ɺ�������---------");
+		try {
+			// ���屨�����л���,����ִ�б���
+//			String envpath = "F:\\FineReport_8.0\\WebReport\\WEB-INF";
+			FRContext.setCurrentEnv(new LocalEnv(frPath));
+			ModuleContext.startModule(EngineModule.class.getName()); // ��ȡ�����µ�ģ���ļ�
+			// ���屣������map������ִ�б���
+			Map<String,String> paramap = new HashMap<String,String>();
+			paramap.put("xcbh", xcbh);
+			// wt
+			TemplateWorkBook workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(),"xc//ws//sth.cpt");
+			ResultWorkBook result = workbook.execute(paramap, new WriteActor());
+			OutputStream outputstream = new FileOutputStream(new File(filepath + xcbh + "_税收违法案件协查回复函.pdf"));
+			PDFExporter PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_税收违法案件协查回复函.pdf" + ",";
+//			System.out.println("-----������飺" + xcbh + "_˰��Υ������Э��ظ���.pdf---------");
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//sthw.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_协查结果反馈货物清单.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_协查结果反馈货物清单.pdf" + ",";
+//			System.out.println("-----������飺" + xcbh + "_Э�����������嵥.pdf---------");
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//stqd.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_协查结果反馈清单.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_协查结果反馈清单.pdf" + ",";
+//			System.out.println("-----������飺" + xcbh + "_Э�������嵥.pdf---------");
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//stxcbg.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_税务稽查案件协查报告.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_税务稽查案件协查报告.pdf" + ",";
+//			System.out.println("-----������飺" + xcbh + "_˰���鰸��Э�鱨��.pdf---------");
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//stxcqk.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_受托协查情况表.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_受托协查情况表.pdf" + ",";
+//			System.out.println("-----������飺" + xcbh + "_����Э�������.pdf---------");
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//swclfkd.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_协查案件处理结果反馈单.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_协查案件处理结果反馈单.pdf" + ",";
+//			System.out.println("-----������飺" + xcbh + "_Э�鰸������������.pdf---------");
+			
+			// ���Ҫ���һ�²���map�������´μ���
+			paramap.clear();
+			outputstream.close();
+			ModuleContext.stopModules();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return names;
+	}
+	
+	/**
+	 * 
+	 * @param suroce_path
+	 * @param temp_path
+	 * @param username
+	 * @param pwd
+	 * @param xPosition
+	 * @param yPosition
+	 * @param pageNum
+	 * @param flag
+	 * @param sealType
+	 * @param opacity
+	 * @return
+	 */
+
+	private String signByPosition(String suroce_path, String temp_path,
+			String username, String pwd, float xPosition, float yPosition,
+			int pageNum, boolean flag, String sealType, float opacity) {
+		String code2 ="";
+		if (sealType == "") {
+			code2 = NXServerSignShellUtils.pdfSgin(suroce_path, temp_path,
+				username, pwd, xPosition, yPosition, pageNum, flag, 
+				opacity);
+		}else {
+			code2 = NXServerSignShellUtils.pdfSgin(suroce_path, temp_path,
+					username, pwd, xPosition, yPosition, pageNum, flag, sealType,
+					opacity);
+		}
+		return code2;
+	}
+
+	private void verifySign(String tempPdfPath) {
+		NXServerSignShell signShell = new NXServerSignShell();
+		signShell.verifySign(tempPdfPath, "#rsa1");
+	}
+}

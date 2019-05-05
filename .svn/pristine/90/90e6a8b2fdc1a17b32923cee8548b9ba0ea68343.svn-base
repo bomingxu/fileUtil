@@ -1,0 +1,178 @@
+/**
+ * 
+ *开发单位：长城软件与系统有限公司
+ *版权所属：长城软件与系统有限公司
+ *创建日期：      
+ *
+ */
+package gov.gwssi.util;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.sql.DataSource;
+
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.stereotype.Service;
+
+/**
+ * ****************************************************************************
+ * java jdbc数据源获取类
+ *
+ * @author(作者)：xuboming	
+ * @author(复审人)：	Administrator 2017-3-6
+ * @version(版本)1.0
+ * @since 1.0
+ ******************************************************************************
+ */
+
+@Service
+public class DBUtil{
+	
+	private static Logger log = Logger.getLogger(DBUtil.class);
+	
+	private static DataSource dataSource;
+	
+	/**
+	 * spring注入数据源dkpzDataSource
+	 * @param dkpzDataSource
+	 */
+	@Autowired
+	public void setDataSource(DataSource dataSource) {
+		DBUtil.dataSource = dataSource;
+	}
+
+	/**
+	 * 获取数据源，如果数据源不存在则从spring配置文件获取
+	 * @return
+	 * @since1.0
+	 */
+	public static DataSource initDs() {
+		try{
+			if(dataSource==null){
+				ApplicationContext initContext = new ClassPathXmlApplicationContext("applicationContext.xml");
+				dataSource =  (DataSource)initContext.getBean("dataSource");
+				log.info("初始化数据源成功");
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+			log.error("初始化数据源dkpz出错!",e);
+		}
+		return dataSource;
+	}
+	
+	/**
+	 * 关闭连接
+	 * 
+	 * @param conn
+	 * 
+	 * @param conn
+	 * @since 1.0
+	 */
+	public static void closeConnection(Connection conn) {
+		log.debug("Close connection !");
+		if (conn != null) {
+			try {
+				conn.close();
+				conn = null;
+			} catch (SQLException e) {
+				log.error("Close Connection fail !", e);
+				e.printStackTrace();
+			}
+		}
+	}
+
+	/**
+	 * 关闭Statement
+	 * 
+	 * @param stmt
+	 * 
+	 * @param stmt
+	 * @since 1.0
+	 */
+	public static void closeStatement(Statement stmt) {
+		log.debug("Close Statement !");
+		if (stmt != null) {
+			try {
+				stmt.close();
+				stmt = null;
+			} catch (SQLException e) {
+				log.error("Close Statement fail !", e);
+				e.printStackTrace();
+			}
+		}
+	}
+
+	/**
+	 * 关闭PreparedStatement
+	 * 
+	 * @param stmt
+	 * 
+	 * @param stmt
+	 * @since 1.0
+	 */
+	public static void closePreparedStatement(PreparedStatement pstmt) {
+		log.debug("Close PreparedStatement !");
+		if (pstmt != null) {
+			try {
+				pstmt.close();
+				pstmt = null;
+			} catch (SQLException e) {
+				log.error("Close PreparedStatement fail !", e);
+				e.printStackTrace();
+			}
+		}
+	}
+
+	/**
+	 * 关闭ResultSet
+	 * 
+	 * @param rs
+	 * 
+	 * @param rs
+	 * @since 1.0
+	 */
+	public static void closeResultSet(ResultSet rs) {
+		log.debug("Close ResultSet!");
+		if (rs != null) {
+			try {
+				rs.close();
+				rs = null;
+			} catch (SQLException e) {
+				log.error("Close ResultSet fail !", e);
+				e.printStackTrace();
+			}
+		}
+	}
+	/**
+	 * ResultSet转为List<Map<String, Object>>
+	 * @param rs
+	 * @return
+	 * @throws SQLException
+	 */
+	public static List<Map<String, Object>> convertList(ResultSet rs) throws SQLException {
+		List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
+		ResultSetMetaData md = rs.getMetaData();
+		int columnCount = md.getColumnCount(); // Map rowData;
+		while (rs.next()) {
+			Map<String, Object> rowData = new HashMap<String, Object>();
+			for (int i = 1; i <= columnCount; i++) {
+				rowData.put(md.getColumnName(i), rs.getObject(i));
+			}
+			list.add(rowData);
+			
+		}
+		return list;
+	}
+}

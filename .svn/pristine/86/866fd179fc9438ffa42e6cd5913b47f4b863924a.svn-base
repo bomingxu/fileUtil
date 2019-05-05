@@ -1,0 +1,62 @@
+<?xml version = "1.0"?>
+<beans>
+	<!-- 测试 -->
+	<service xmlns="http://xfire.codehaus.org/config/1.0">  
+		<!-- 服务名称，客户端调用时需要这个 -->  
+		<name>HelloWorld</name>  
+		<!-- 一般是网址，意义不大 -->  
+		<namespace>http://www.hello.com</namespace>  
+		<!-- 接口类 -->  
+		<serviceClass>test.HelloWorld</serviceClass>  
+		<!-- 实现类 -->  
+		<implementationClass>test.HelloWorldImpl</implementationClass>  
+	</service>
+	 
+	<!--附件上传  -->
+	<service xmlns="http://xfire.codehaus.org/config/1.0">  
+		<!-- 服务名称，客户端调用时需要这个 -->  
+		<name>UploadFile</name>  
+		<!-- 一般是网址，意义不大 -->  
+		<namespace>http://www.hello.com</namespace>  
+		<!-- 接口类 -->  
+		<serviceClass>gov.gwssi.fileUpload.FileUploadI</serviceClass>  
+		<!-- 实现类 -->  
+		<implementationClass>gov.gwssi.fileUpload.FileUploadImpl</implementationClass>  
+	</service>
+	
+	<!-- 附件下载 -->
+	<service xmlns="http://xfire.codehaus.org/config/1.0">  
+		<!-- 服务名称，客户端调用时需要这个 -->  
+		<name>DownLoadFile</name>  
+		<!-- 一般是网址，意义不大 -->  
+		<namespace>http://www.hello.com</namespace>  
+		<!-- 接口类 -->  
+		<serviceClass>gov.gwssi.fileDownLoad.FileDownLoadI</serviceClass>  
+		<!-- 实现类 -->  
+		<implementationClass>gov.gwssi.fileDownLoad.FileDownLoadImpl</implementationClass>  
+	</service>
+	
+	<!-- 附件删除 -->
+	<service xmlns="http://xfire.codehaus.org/config/1.0">  
+		<!-- 服务名称，客户端调用时需要这个 -->  
+		<name>DeletedFile</name>  
+		<!-- 一般是网址，意义不大 -->
+		<namespace>http://www.hello.com</namespace>  
+		<!-- 接口类 -->  
+		<serviceClass>gov.gwssi.fileDeleted.FileDeletedI</serviceClass>  
+		<!-- 实现类 -->  
+		<implementationClass>gov.gwssi.fileDeleted.FileDeletedImpl</implementationClass>  
+	</service>
+	
+	<!-- 文书盖章 -->
+	<service xmlns="http://xfire.codehaus.org/config/1.0">  
+		<!-- 服务名称，客户端调用时需要这个 -->  
+		<name>PdfSign</name>  
+		<!-- 一般是网址，意义不大 -->
+		<namespace>http://www.hello.com</namespace>  
+		<!-- 接口类 -->  
+		<serviceClass>gov.gwssi.pdfSign.PDFSignI</serviceClass>  
+		<!-- 实现类 -->  
+		<implementationClass>gov.gwssi.pdfSign.PDFSignImpl</implementationClass>  
+	</service>
+ </beans>

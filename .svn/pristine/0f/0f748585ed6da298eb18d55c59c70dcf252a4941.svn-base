@@ -1,0 +1,62 @@
+/**
+ * 
+ *开发单位：长城软件与系统有限公司
+ *版权所属：长城软件与系统有限公司
+ *创建日期：  2017-6-11      
+ *
+ */
+package gov.gwssi.quartz;
+
+import java.util.List;
+
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+
+/**
+ *
+ * ****************************************************************************
+ * 自动任务启动加载类
+ *
+ * @author(作者)：xuyongyun	
+ * @author(复审人)：	Administrator 2017-6-11
+ * @version(版本)1.0
+ * @since 1.0
+ ******************************************************************************
+ */
+
+public class TaskLoad {
+	
+	private static Logger log = Logger.getLogger(TaskLoad.class);       
+    @Autowired
+    private TaskService ts;
+
+	public void initTask(){             
+    	try{
+			List<QuartzJobBean> jobs = ts.getTaskFromDb();
+			if(jobs!=null&&jobs.size()>0){
+				int count = 0;
+				for(QuartzJobBean job:jobs){
+					if(job!=null){
+						boolean isSucc = ts.addJob(job);
+						if(!isSucc){
+							continue;
+						}else{
+							count++;
+						}
+					}
+				}
+				log.info("QuartzServlet-->成功加载的job数量=" + count);
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+			log.error("QuartzServlet-->启动加载job出错!",e);
+		}      
+    }
+	
+	public void destroyTask(){
+		if(ts!=null){
+			ts.delAllJob();
+		}
+	}
+
+}

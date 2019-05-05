@@ -1,0 +1,128 @@
+package gov.gwssi.fileUpload;
+
+import gov.gwssi.fileDeleted.FileDeletedI;
+import gov.gwssi.fileDeleted.FileDeletedImpl;
+import gov.gwssi.util.OpenOfficePDFConverter;
+import gov.gwssi.util.PDFConverter;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
+import javax.jws.WebService;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+
+import com.thoughtworks.xstream.core.util.Base64Encoder;
+
+@WebService
+public class FileUploadImpl implements FileUploadI {
+	@Override
+	public String uploadFile(String fileContext,String filePath,String fileName){
+	   String result = "0";
+	   try {
+		   Base64Encoder base64 = new Base64Encoder();
+		   byte[] byt = base64.decode(fileContext);
+		  	File file = new File(filePath+"\\\\"+fileName);
+		  	if(!file.getParentFile().exists()){  
+	            file.getParentFile().mkdirs();  
+	        }
+		  	if(!file.exists()){
+		  		file.createNewFile();  
+		  	}
+		  	FileOutputStream fos = new FileOutputStream(file);
+		  	fos.write(byt);
+		  	fos.close();
+		  	result = filePath;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+	/**
+	 * 锟斤拷锟紼xcel
+	 */
+	@SuppressWarnings("deprecation")
+	@Override
+	public void writeExcel(String filePath, String ysmc_fileName){
+		try {
+			File file = new File(filePath);
+		  	if(!file.getParentFile().exists()){  
+	            file.getParentFile().mkdirs();  
+	        }
+		  	if(!file.exists()){
+		  		file.createNewFile();  
+		  	}
+	        HSSFWorkbook workbook = new HSSFWorkbook();
+	        HSSFSheet sheet = workbook.createSheet("shell1");
+	        HSSFRow row = sheet.createRow(0);
+	        HSSFCell cell = row.createCell(0);
+	        cell.setCellValue("元素名称");
+	        cell = row.createCell(1);
+	        cell.setCellValue("附件名称");
+
+	        String[] ysmc_fileNames = ysmc_fileName.split(";");
+	        for (int i = 0; i < ysmc_fileNames.length; i++) {
+	            HSSFRow row1 = sheet.createRow(i + 1);
+	            String ysmc = ysmc_fileNames[i].split(":")[0];
+	            String fileName = ysmc_fileNames[i].split(":")[1];
+	            row1.createCell(0).setCellValue(ysmc);
+	            row1.createCell(1).setCellValue(fileName);
+	        }
+
+	        try {
+	            FileOutputStream fos = new FileOutputStream(filePath);
+	            workbook.write(fos);
+	            fos.close();
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	/**
+	 * @param extend
+	 * @param filePath
+	 * @param fileName
+	 * @return
+	 * @throws IOException 
+	 */
+	public static void cover2Pdf(String extend,String filePath) throws IOException{
+	   File file = new File(filePath);
+	   InputStream inputStream = new FileInputStream(filePath);  
+       byte[] head = new byte[3];  
+       inputStream.read(head);   
+       String code = "gb2312";  
+       if (head[0] == -1 && head[1] == -2 ){
+    	   code = "UTF-16";  
+       }else if (head[0] == -2 && head[1] == -1 ){
+    	   code = "Unicode";  
+       }else if(head[0]==-17 && head[1]==-69 && head[2] ==-65)  {
+    	   code = "UTF-8";  
+       }
+       if("UTF-8".equals(code)){
+    	   FileUtils.writeLines(new File(filePath), "UTF-8", FileUtils.readLines(file, code));   
+       }
+		PDFConverter pdfConverter = new OpenOfficePDFConverter();
+		pdfConverter.convert2PDF(filePath,extend);
+		FileDeletedI fileDeleted = new FileDeletedImpl();
+		fileDeleted.deletedFile(filePath);
+	}
+	
+	public static void main(String[] args) {
+		String extend = "txt";
+		String filePath = "G:\\即时通讯.txt";
+		try {
+			cover2Pdf(extend,filePath);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+}

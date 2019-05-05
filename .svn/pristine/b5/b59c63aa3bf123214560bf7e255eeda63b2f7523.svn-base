@@ -1,0 +1,20 @@
+package gov.gwssi.signJob;
+
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+
+public class SignController implements Job{
+
+	@Override
+	public void execute(JobExecutionContext arg0) throws JobExecutionException {
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				// TODO 把签章写在这里
+				
+			}
+		}).start();
+	}
+
+}

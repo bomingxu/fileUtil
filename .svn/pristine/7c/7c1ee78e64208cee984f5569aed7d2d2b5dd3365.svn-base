@@ -1,0 +1,76 @@
+package gov.gwssi.fileDownLoad;
+
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/bigFileDownLoadController")
+public class BigFileDownLoadController {
+	
+	@RequestMapping("downLoadBigFile")
+	public void downLoadBigFile(HttpServletResponse response, HttpServletRequest request){
+	    try {
+	    	String fileName = new String(request.getParameter("fileName").getBytes("iso-8859-1"), "utf-8");  
+	    	String filePath = new String(request.getParameter("filePath").getBytes("iso-8859-1"), "utf-8");
+	    	@SuppressWarnings("static-access")
+			byte[] data = this.toByteArray(filePath);  
+			fileName = URLEncoder.encode(fileName, "UTF-8");
+			response.reset();  
+			response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");  
+			response.addHeader("Content-Length", "" + data.length);  
+			response.setContentType("application/octet-stream;charset=UTF-8");  
+			BufferedOutputStream outputStream = new BufferedOutputStream(response.getOutputStream());  
+			outputStream.write(data);  
+			outputStream.flush();  
+			outputStream.close();
+			response.flushBuffer();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+	public static byte[] toByteArray(String filePath) throws IOException {
+		File f = new File(filePath);
+		if (!f.exists()) {
+			throw new FileNotFoundException(filePath);
+		}
+		FileChannel channel = null;
+		FileInputStream fs = null;
+		try {
+			fs = new FileInputStream(f);
+			channel = fs.getChannel();
+			ByteBuffer byteBuffer = ByteBuffer.allocate((int) channel.size());
+			while ((channel.read(byteBuffer)) > 0) {
+				// do nothing
+			}
+			return byteBuffer.array();
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw e;
+		} finally {
+			try {
+				channel.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			try {
+				fs.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+}

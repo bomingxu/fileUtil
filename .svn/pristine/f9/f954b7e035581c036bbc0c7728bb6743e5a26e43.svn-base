@@ -1,0 +1,280 @@
+/**
+ * 
+ *开发单位：长城软件与系统有限公司
+ *版权所属：长城软件与系统有限公司
+ *创建日期：  2017-6-8      
+ *
+ */
+package gov.gwssi.quartz;
+
+import gov.gwssi.util.DBUtil;
+import gov.gwssi.util.StringUtil;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.log4j.Logger;
+import org.quartz.CronTrigger;
+import org.quartz.JobDetail;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.SchedulerFactory;
+import org.quartz.Trigger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+/**
+ *
+ * ****************************************************************************
+ * 任务调度业务逻辑处理类
+ *
+ * @author(作者)：xuyongyun	
+ * @author(复审人)：	Administrator 2017-6-8
+ * @version(版本)1.0
+ * @since 1.0
+ ******************************************************************************
+ */
+@Service
+public class TaskService{
+	
+	private static Logger log = Logger.getLogger(TaskService.class);
+	
+	@Autowired
+	private SchedulerFactory schedulerFactoryBean ;
+
+	/**     
+     * 获取单个任务     
+     * @param jobName  任务名
+     * @param jobGroup 任务组名
+     * @return     
+     * @throws SchedulerException     
+     */      
+    public QuartzJobBean getJob(String jobName,String groupName) throws SchedulerException{      
+        QuartzJobBean job = null;
+        Scheduler scheduler = schedulerFactoryBean.getScheduler();
+        Trigger[] triggers = scheduler.getTriggersOfJob(jobName,groupName);
+        if (null != triggers&&triggers.length>0) {
+        	Trigger trigger = triggers[0];
+            job = new QuartzJobBean();
+            job.setJobName(jobName);
+            job.setJobGroup(groupName);
+            job.setTriggerName(trigger.getName());
+            job.setTriggerGroup(trigger.getGroup());
+            job.setDescription(trigger.getDescription());
+            job.setStartTime(trigger.getStartTime());
+            job.setNextTime(trigger.getNextFireTime()); //下次触发时间 
+            job.setPreviousTime(trigger.getPreviousFireTime());//上次触发时间
+            int triggerState = scheduler.getTriggerState(trigger.getName(), trigger.getGroup());
+            job.setTriggerStatus(triggerState);
+            if (trigger instanceof CronTrigger) {
+                CronTrigger cronTrigger = (CronTrigger) trigger;
+                String cronExpression = cronTrigger.getCronExpression();
+                job.setCronTime(cronExpression);
+            }
+        }
+        return job;
+    }
+    
+    /**     
+     * 获取所有任务     
+     * @return     
+     * @throws SchedulerException     
+     */      
+    public List<QuartzJobBean> getAllJobs() throws SchedulerException{
+    	Scheduler scheduler = schedulerFactoryBean.getScheduler();
+        List<QuartzJobBean> jobList = new ArrayList<QuartzJobBean>();
+        for (String groupName : scheduler.getJobGroupNames()) {
+            for (String jobName : scheduler.getJobNames(groupName)) {
+                QuartzJobBean job = new QuartzJobBean();
+                job = getJob(jobName,groupName);
+                jobList.add(job);
+            }
+        }
+        log.info("TaskService-->当前job数量=" + jobList.size());
+        return jobList;
+    }      
+          
+    /**     
+     * 所有正常运行的job     
+     *      
+     * @return     
+     * @throws SchedulerException     
+     */
+	public List<QuartzJobBean> getRunningJob() throws SchedulerException {
+		Scheduler scheduler = schedulerFactoryBean.getScheduler();
+        List<QuartzJobBean> jobList = new ArrayList<QuartzJobBean>();
+        for (String groupName : scheduler.getJobGroupNames()) {
+            for (String jobName : scheduler.getJobNames(groupName)) {
+                QuartzJobBean job = new QuartzJobBean();
+                job = getJob(jobName,groupName);
+                if(job.getTriggerStatus()==Trigger.STATE_NORMAL){
+                	jobList.add(job);
+                }
+            }
+        }
+        log.info("TaskService-->当前运行中job数量=" + jobList.size());
+        return jobList;    
+    }      
+          
+    /**     
+     * 查询数据库配置任务列表     
+     * @return     
+     */      
+	public List<QuartzJobBean> getTaskFromDb(){      
+        List<QuartzJobBean> jobs = new ArrayList<QuartzJobBean>();
+        String sql = "select job_name,job_group,trigger_name,trigger_group,trigger_status,cron_time,description,job_class,start_time,previous_time,next_time from XC_JOB_CONTROLLER where trigger_status='1'";
+        Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		try {
+			conn = DBUtil.initDs().getConnection();
+			ps = conn.prepareStatement(sql);
+			rs = ps.executeQuery();
+			// 遍历ResultSet
+			while (rs.next()) {// 判断rs是否为空
+				QuartzJobBean job = new QuartzJobBean();
+				job.setJobName(StringUtil.trimObject(rs.getString("job_name"),null));
+        		job.setJobGroup(StringUtil.trimObject(rs.getString("job_group"),null));
+        		job.setTriggerName(StringUtil.trimObject(rs.getString("trigger_name"),null));
+        		job.setTriggerGroup(StringUtil.trimObject(rs.getString("trigger_group"),null));
+        		job.setDescription(StringUtil.trimObject(rs.getString("description"),null));
+        		job.setCronTime(StringUtil.trimObject(rs.getString("cron_time"),null));
+        		job.setJobClass(StringUtil.trimObject(rs.getString("job_class"),null));
+        		jobs.add(job);
+			}
+		} catch (Exception e) {
+			log.error("TaskService——>getTaskFromDb——>查询XC_JOB_CONTROLLER报错", e);
+			e.printStackTrace();
+		} finally {
+			DBUtil.closeResultSet(rs);
+			DBUtil.closePreparedStatement(ps);
+			DBUtil.closeConnection(conn);
+		}
+        log.info("TaskService-->数据库中配置job数量=" + jobs.size());
+        return jobs;
+    }
+         
+          
+    /**     
+     * 添加任务     
+     *      
+     * @throws SchedulerException     
+     */      
+    @SuppressWarnings("rawtypes")
+	public boolean addJob(QuartzJobBean job){
+    	
+        try {
+        	Scheduler scheduler = schedulerFactoryBean.getScheduler();
+        	scheduler.start();
+        	
+        	Trigger[] triggers = scheduler.getTriggersOfJob(job.getJobName(),job.getJobGroup());
+			
+            if(null==triggers||triggers.length==0) {//不存在，创建一个
+            	log.info("TaskService-->jobName = " + job.getJobName() + ",jobGroup = " + job.getJobGroup() + "不存在，新建job！");
+            	CronTrigger trigger = new CronTrigger(job.getTriggerName(),job.getTriggerGroup(),job.getCronTime());
+            	trigger.setDescription(job.getDescription());
+            	Class cls = Class.forName(job.getJobClass());
+                JobDetail jobDetail = new JobDetail(job.getJobName(), job.getJobGroup(), cls);
+                scheduler.scheduleJob(jobDetail, trigger);
+            }else{//trigger已存在，则更新相应的定时设置
+            	log.info("TaskService-->jobName = " + job.getJobName() + ",jobGroup = " + job.getJobGroup() + "已存在，更新job！");
+            	return updateJob(job);
+            } 
+            return true;
+		}catch(Exception e){
+			e.printStackTrace();
+			log.error("TaskService-->添加任务出错!",e);
+			return false; 
+		}
+    }      
+      
+    /**     
+     * 暂停任务     
+     * @param scheduleJob     
+     * @return     
+     */      
+    public boolean pauseJob(QuartzJobBean job){ 
+        try{
+        	Scheduler scheduler = schedulerFactoryBean.getScheduler(); 
+        	scheduler.pauseJob(job.getJobName(), job.getJobGroup());
+            return true;      
+        }catch(SchedulerException e) {
+        	e.printStackTrace();
+        	log.error("TaskService-->暂停任务出错!",e);
+        	return false;
+        }
+    }
+          
+    /**     
+     * 恢复任务     
+     * @param scheduleJob     
+     * @return     
+     */      
+    public boolean resumeJob(QuartzJobBean job){ 
+        try {
+        	Scheduler scheduler = schedulerFactoryBean.getScheduler();
+            scheduler.resumeJob(job.getJobName(), job.getJobGroup());
+            return true;      
+        } catch (SchedulerException e) {
+        	e.printStackTrace();
+        	log.error("TaskService-->恢复任务出错!",e);
+        	return false;
+        }
+    }      
+          
+    /**     
+     * 删除任务     
+     */      
+    public boolean delJob(QuartzJobBean job){      
+        
+        try{
+        	Scheduler scheduler = schedulerFactoryBean.getScheduler();
+        	scheduler.deleteJob(job.getJobName(), job.getJobGroup());
+            return true;      
+        } catch (SchedulerException e) {
+        	e.printStackTrace();
+        	log.error("TaskService-->删除任务出错!",e);
+        	return false;   
+        }
+    }
+    
+    public void delAllJob(){
+    	 try{
+    		List<QuartzJobBean> jobs = getAllJobs();
+            if(jobs!=null){
+            	for(QuartzJobBean job:jobs){
+					if(job!=null){
+						delJob(job);
+					}
+				}
+            }
+         } catch (SchedulerException e) {
+         	e.printStackTrace();
+         	log.error("TaskService-->删除全部任务出错!",e);
+         }
+    }
+          
+    /**     
+     * 更新任务
+     * @throws SchedulerException
+     */
+    public boolean updateJob(QuartzJobBean job){
+        
+        try {
+        	Scheduler scheduler = schedulerFactoryBean.getScheduler();
+        	CronTrigger trigger = new CronTrigger(job.getTriggerName(),job.getTriggerGroup(),job.getCronTime());
+        	trigger.setJobName(job.getJobName());
+        	trigger.setJobGroup(job.getJobGroup());
+			//按新的trigger重新设置job执行
+	        scheduler.rescheduleJob(job.getJobName(), job.getJobGroup(), trigger);
+	        return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+        	log.error("TaskService-->更新任务出错!",e);
+			return false;
+		}
+    }
+
+}

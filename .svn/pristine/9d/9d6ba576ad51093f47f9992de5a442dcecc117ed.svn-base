@@ -1,0 +1,20 @@
+package test;
+
+import org.codehaus.xfire.XFireFactory;
+import org.codehaus.xfire.client.XFireProxyFactory;
+import org.codehaus.xfire.service.binding.ObjectServiceFactory;
+
+public class ClientTest {
+	
+	public static void main(String[] args) throws Exception {
+		org.codehaus.xfire.service.Service service = new ObjectServiceFactory().create(HelloWorld.class);  
+		XFireProxyFactory factory = new XFireProxyFactory(XFireFactory.newInstance().getXFire());  
+		  String url = "http://localhost:8080/fileUtil/services/HelloWorld";  
+		  HelloWorld helloWorld = (HelloWorld)factory.create(service, url);  
+		  //String  
+		  String str = helloWorld.sayHello("ê°Èý");  
+		  System.out.println("Str:"+str);  
+    
+	}
+
+}

@@ -1,0 +1,80 @@
+package gov.gwssi.signJob;
+
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import gov.gwssi.pdfSign.PDFSignImpl;
+import gov.gwssi.util.DBUtil;
+import gov.gwssi.util.DateUtil;
+
+import org.apache.log4j.Logger;
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+
+public class SignController implements Job{
+
+	private static Logger log = Logger.getLogger(SignController.class);
+	@Override
+	public void execute(JobExecutionContext arg0) throws JobExecutionException {
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				log.info("开启GSJSHGXXJob，时间："+DateUtil.getCurrentDate(DateUtil.CKTS_SJGS));
+				//先查询监控表
+				Connection conn = null;
+				PreparedStatement prep = null;
+				ResultSet rs = null;
+				String sql = "select XCBHS,WS_BZ from XC_JKXX_WSQZ where FWZT_DM='0' and CWCS='0'";
+				List<Map<String,String>> resultList = new ArrayList<Map<String,String>>();
+				try{
+					conn = DBUtil.initDs().getConnection();
+					prep = conn.prepareStatement(sql);
+					rs = prep.executeQuery();
+					while(rs.next()){
+						Map<String,String> temp = new HashMap<String, String>();
+						String xcbhs = rs.getString("XCBHS");
+						String ws_bz = rs.getString("WS_BZ");
+						temp.put("xcbhs", xcbhs);
+						temp.put("ws_bz", ws_bz);
+						resultList.add(temp);
+					}
+					if(resultList != null && resultList.size()>0){//监控信息不为空则调用签章方法
+						for(int i=0;i<resultList.size();i++){
+							String xcbhs = resultList.get(i).get("xcbhs");
+							String ws_bz = resultList.get(i).get("ws_bz");
+							String updateSql = "";
+							boolean result = true;
+							if("0".equals(ws_bz)){//委托文书
+								result = PDFSignImpl.signWtxc(xcbhs);
+							}else if("1".equals(ws_bz)){//受托文书
+								result = PDFSignImpl.signStxc(xcbhs);
+							}
+							if(result){
+								updateSql = "update XC_JKXX_WSQZ set FWZT_DM='1' where xcbhs='"+xcbhs+"'";
+							}else{
+								updateSql = "update XC_JKXX_WSQZ set CWCS='1' where xcbhs='"+xcbhs+"'";
+							}
+							prep = conn.prepareStatement(updateSql);
+							prep.execute();
+						}
+					}
+				}catch(Exception e){
+					e.printStackTrace();
+					log.error("SignController定时签章报错：",e);
+				}finally{
+				    DBUtil.closeResultSet(rs);
+				    DBUtil.closePreparedStatement(prep);
+				    DBUtil.closeConnection(conn);
+				}
+			}
+		}).start();
+	}
+
+}

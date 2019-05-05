@@ -1,0 +1,11 @@
+package gov.gwssi.fileUpload;
+
+import javax.jws.WebService;
+
+@WebService
+public interface FileUploadI {
+	public String uploadFile(String fileContexts,String filePath,String fileNames);
+	
+	public void writeExcel(String filePath,String xcys_fileName);
+	
+}

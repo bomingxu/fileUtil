@@ -1,0 +1,216 @@
+/**
+ * 
+ *开发单位：长城软件与系统有限公司
+ *版权所属：长城软件与系统有限公司
+ *创建日期：  2017-6-8      
+ *
+ */
+package gov.gwssi.quartz;
+
+import java.util.Date;
+
+/**
+ *
+ * ****************************************************************************
+ * 自动任务实体
+ *
+ * @author(作者)：xuboming	
+ * @author(复审人)：	Administrator 2017-6-8
+ * @version(版本)1.0
+ * @since 1.0
+ ******************************************************************************
+ */
+
+public class QuartzJobBean implements java.io.Serializable {
+	
+	private static final long serialVersionUID = -2874316222627731636L;
+
+	/** 任务名称 */       
+    private String jobName;
+        
+    /** 任务分组，任务名称+组名称应该是唯一的 */
+    private String jobGroup;
+    
+    /** 触发器名称 */       
+    private String triggerName;
+        
+    /** 触发器分组，触发器名称+组名称应该是唯一的 */
+    private String triggerGroup;
+            
+    /** 触发器状态 */
+    private int triggerStatus;
+           
+    /** 任务运行时间cron表达式 */       
+    private String cronTime;
+        
+    /** 任务描述 */       
+    private String description;
+           
+    /** 任务调用类名，包名+类名，通过类反射调用    */
+    private String jobClass;
+           
+    /** 启动时间 */       
+    private Date startTime;
+           
+    /** 前一次运行时间 */       
+    private Date previousTime;
+           
+    /** 下次运行时间 */       
+    private Date nextTime;
+
+	/**
+	 * @return the jobName
+	 */
+	public String getJobName() {
+		return jobName;
+	}
+
+	/**
+	 * @param jobName the jobName to set
+	 */
+	public void setJobName(String jobName) {
+		this.jobName = jobName;
+	}
+
+	/**
+	 * @return the jobGroup
+	 */
+	public String getJobGroup() {
+		return jobGroup;
+	}
+
+	/**
+	 * @param jobGroup the jobGroup to set
+	 */
+	public void setJobGroup(String jobGroup) {
+		this.jobGroup = jobGroup;
+	}
+
+	/**
+	 * @return the triggerName
+	 */
+	public String getTriggerName() {
+		return triggerName;
+	}
+
+	/**
+	 * @param triggerName the triggerName to set
+	 */
+	public void setTriggerName(String triggerName) {
+		this.triggerName = triggerName;
+	}
+
+	/**
+	 * @return the triggerGroup
+	 */
+	public String getTriggerGroup() {
+		return triggerGroup;
+	}
+
+	/**
+	 * @param triggerGroup the triggerGroup to set
+	 */
+	public void setTriggerGroup(String triggerGroup) {
+		this.triggerGroup = triggerGroup;
+	}
+
+	/**
+	 * @return the triggerStatus
+	 */
+	public int getTriggerStatus() {
+		return triggerStatus;
+	}
+
+	/**
+	 * @param triggerStatus the triggerStatus to set
+	 */
+	public void setTriggerStatus(int triggerStatus) {
+		this.triggerStatus = triggerStatus;
+	}
+
+	/**
+	 * @return the cronTime
+	 */
+	public String getCronTime() {
+		return cronTime;
+	}
+
+	/**
+	 * @param cronTime the cronTime to set
+	 */
+	public void setCronTime(String cronTime) {
+		this.cronTime = cronTime;
+	}
+
+	/**
+	 * @return the description
+	 */
+	public String getDescription() {
+		return description;
+	}
+
+	/**
+	 * @param description the description to set
+	 */
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	/**
+	 * @return the jobClass
+	 */
+	public String getJobClass() {
+		return jobClass;
+	}
+
+	/**
+	 * @param jobClass the jobClass to set
+	 */
+	public void setJobClass(String jobClass) {
+		this.jobClass = jobClass;
+	}
+
+	/**
+	 * @return the startTime
+	 */
+	public Date getStartTime() {
+		return startTime;
+	}
+
+	/**
+	 * @param startTime the startTime to set
+	 */
+	public void setStartTime(Date startTime) {
+		this.startTime = startTime;
+	}
+
+	/**
+	 * @return the previousTime
+	 */
+	public Date getPreviousTime() {
+		return previousTime;
+	}
+
+	/**
+	 * @param previousTime the previousTime to set
+	 */
+	public void setPreviousTime(Date previousTime) {
+		this.previousTime = previousTime;
+	}
+
+	/**
+	 * @return the nextTime
+	 */
+	public Date getNextTime() {
+		return nextTime;
+	}
+
+	/**
+	 * @param nextTime the nextTime to set
+	 */
+	public void setNextTime(Date nextTime) {
+		this.nextTime = nextTime;
+	}
+
+
+}

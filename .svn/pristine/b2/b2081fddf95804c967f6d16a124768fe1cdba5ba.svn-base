@@ -1,0 +1,31 @@
+package gov.gwssi.fileUpload;
+
+import java.io.File;
+import java.io.FileOutputStream;
+
+import javax.jws.WebService;
+
+@WebService
+public class FileUploadImpl implements FileUploadI {
+	@Override
+	public String uploadFile(byte[] fileContext,String filePath,String fileName){
+		String result = "0";
+		   try {
+			  	File file = new File(filePath+"/"+fileName);
+			  	if(!file.getParentFile().exists()){  
+		            file.getParentFile().mkdirs();  
+		        }
+			  	if(!file.exists()){
+			  		file.createNewFile();  
+			  	}
+			  	FileOutputStream fos = new FileOutputStream(file);
+			  	fos.write(fileContext);
+			  	fos.close();
+			  	result = filePath;
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		return result;
+	}
+
+}

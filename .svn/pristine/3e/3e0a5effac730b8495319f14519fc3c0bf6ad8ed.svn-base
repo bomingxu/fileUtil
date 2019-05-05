@@ -1,0 +1,8 @@
+package gov.gwssi.fileUpload;
+
+import javax.jws.WebService;
+
+@WebService
+public interface FileUploadI {
+	public String uploadFile(byte[] fileContext,String filePath,String fileName);
+}

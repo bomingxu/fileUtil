@@ -1,0 +1,264 @@
+package gov.gwssi.pdfSign;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.jws.WebService;
+import com.esa2000.NXServerSignShell;
+import com.esa2000.pdfsign.util.NXServerSignShellUtils;
+import com.fr.base.FRContext;
+import com.fr.dav.LocalEnv;
+import com.fr.general.ModuleContext;
+import com.fr.io.TemplateWorkBookIO;
+import com.fr.io.exporter.PDFExporter;
+import com.fr.main.TemplateWorkBook;
+import com.fr.main.workbook.ResultWorkBook;
+import com.fr.report.module.EngineModule;
+import com.fr.stable.WriteActor;
+import com.fr.third.org.hsqldb.lib.StringUtil;
+
+import gov.gwssi.util.OpenOfficePDFConverter;
+import gov.gwssi.util.PDFConverter;
+@WebService
+public class PDFSignImpl  implements PDFSignI {
+	
+	/**
+	 * 文书签章
+	 * @param filepath cpt生成PDF后路径
+	 * @param savepath PDF盖章后文件存储路径
+	 */
+	public String wsPdfSign(String filepath, String savepath, String xcbh, String xkbz, String frPath) throws FileNotFoundException{
+		String result = "";
+		File filedir = new File(filepath);
+		if(!filedir.exists()){  
+			filedir.mkdirs();  
+        }
+		File savedir = new File(savepath);
+		if(!savedir.exists()){  
+			savedir.mkdirs();  
+        }
+		
+		String names = cptTopdf(xcbh, xkbz, filepath, frPath);
+		System.out.print("---------开始对文书签章--------");
+		File file = new File(filepath);
+		if (!file.isDirectory()) {
+			System.out.println("文件");
+			System.out.println("path=" + file.getPath());
+			System.out.println("name=" + file.getName());
+
+		} else if (file.isDirectory()) {
+			System.out.println("文件夹");
+			String[] filelist = file.list();
+			for (int i = 0; i < filelist.length; i++) {
+				File readfile = new File(filepath + "\\" + filelist[i]);
+				if (!readfile.isDirectory()) {
+					System.out.println("path=" + readfile.getPath());
+					System.out.println("name=" + readfile.getName());
+					result = sigh(filepath + "\\" + filelist[i], savepath + "\\" + filelist[i]);
+					if ("0".equals(result)) {
+						readfile.delete();
+					}
+				} 
+			}
+		}
+		return result + "," + names;
+	}
+	
+	/**
+	 * 附件签章
+	 */
+	public String fjPdfSign(String fjPaths, String savePath, String fjpdfPath) throws FileNotFoundException{
+		String result = "";
+		System.out.println("---------开始对附件签章--------");
+		
+		PDFConverter pdfConverter = new OpenOfficePDFConverter();
+		for (String filepath : fjPaths.split(",")) {
+			if (!StringUtil.isEmpty(filepath)) {
+				String filename = filepath.substring(filepath.lastIndexOf("\\"), filepath.lastIndexOf("."));
+				String extend = filepath.substring(filepath.lastIndexOf(".")+1);
+				String pdfname = fjpdfPath + filename + ".pdf";
+				pdfConverter.convert2PDF(filepath, pdfname, extend);
+			}
+		}
+
+		File file = new File(fjpdfPath);
+		if (!file.isDirectory()) {
+			System.out.println("文件");
+			System.out.println("path=" + file.getPath());
+			System.out.println("name=" + file.getName());
+
+		} else if (file.isDirectory()) {
+			System.out.println("文件夹");
+			String[] filelist = file.list();
+			for (int i = 0; i < filelist.length; i++) {
+				File readfile = new File(fjpdfPath + "\\" + filelist[i]);
+				if (!readfile.isDirectory()) {
+					System.out.println("path=" + readfile.getPath());
+					System.out.println("name=" + readfile.getName());
+					result = sigh(fjpdfPath + "\\" + filelist[i], savePath + "\\" + filelist[i]);
+					if ("0".equals(result)) {
+						readfile.delete();
+					} else {
+						break;
+					}
+				} 
+			}
+		}
+	
+		return result;
+	}
+	
+	/**
+	 * 
+	 * @param filepath 文件路径+文件名.pdf
+	 * @param savepath 文件保存路径（绝对路径）+文件名.pdf
+	 */
+	private String sigh(String filepath, String savepath) {
+		String result = "";
+		String orgcpde ="11301000000";//纳税人识别号/容器号
+		String sealcpde ="52AB3334BBED44C8D5A7D21273388E78";//纳税人校验码
+		
+		boolean TSA_type = false;// 是否添加时间戳
+		
+		//验证+注释+坐标盖章
+		verifySign(filepath);
+//		addAnnotation(source, path1+"\\"+filename , text2, 120, 121, 133, 126, fontSize,page);
+		result = signByPosition(filepath, savepath, orgcpde,sealcpde, 125, 123, 1, TSA_type,"0", 0.7f);
+		return result;
+	}
+	
+	/**
+	 * cpt模板输出PDF
+	 * @param xcbh
+	 * @param xkbz
+	 * @param filepath cpt保存路径
+	 */
+	private String cptTopdf(String xcbh, String xkbz, String filepath, String frPath) {
+		String names = "";
+		System.out.println("-----开始生成函件文书---------");
+		try {
+			// 定义报表运行环境,用于执行报表
+//			String envpath = "F:\\FineReport_8.0\\WebReport\\WEB-INF";
+			FRContext.setCurrentEnv(new LocalEnv(frPath));
+			ModuleContext.startModule(EngineModule.class.getName()); // 读取环境下的模板文件
+			// 定义保存参数的map，用于执行报表
+			Map<String,String> paramap = new HashMap<String,String>();
+			paramap.put("xcbh", xcbh);
+			// wt
+			TemplateWorkBook workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(),"xc//ws//wth.cpt");
+			ResultWorkBook result = workbook.execute(paramap, new WriteActor());
+			OutputStream outputstream = new FileOutputStream(new File(filepath + xcbh + "_wth.pdf"));
+			PDFExporter PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_wth.pdf" + ",";
+			System.out.println("-----生成文书：" + xcbh + "_wth.pdf---------");
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//wtaj.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_wtaj.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_wtaj.pdf" + ",";
+			System.out.println("-----生成文书：" + xcbh + "_wtaj.pdf---------");
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//wtxcyq.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_wtxcyq.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_wtxcyq.pdf" + ",";
+			System.out.println("-----生成文书：" + xcbh + "_wtxcyq.pdf---------");
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//wtqd.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_wtqd.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_wtqd.pdf" + ",";
+			System.out.println("-----生成文书：" + xcbh + "_wtqd.pdf---------");
+			
+			workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//wthw.cpt");
+			result = workbook.execute(paramap, new WriteActor());
+			outputstream = new FileOutputStream(new File(filepath + xcbh+ "_wthw.pdf"));
+			PdfExport = new PDFExporter();
+			PdfExport.export(outputstream, result);
+			names += xcbh + "_wthw.pdf" + ",";
+			System.out.println("-----生成文书：" + xcbh + "_wthw.pdf---------");
+			
+			if (xkbz.equals("Y")) {
+				PdfExport.export(outputstream, result);
+				workbook = TemplateWorkBookIO.readTemplateWorkBook(FRContext.getCurrentEnv(), "xc//ws//xk.cpt");
+				result = workbook.execute(paramap, new WriteActor());
+				outputstream = new FileOutputStream(new File(filepath + xcbh+ "xk.pdf"));
+				PdfExport = new PDFExporter();
+				PdfExport.export(outputstream, result);
+				names += xcbh + "xk.pdf" + ",";
+				System.out.println("-----生成文书：" + xcbh + "_xk.pdf---------");
+			}
+			// 最后要清空一下参数map，用于下次计算
+			paramap.clear();
+			outputstream.close();
+			ModuleContext.stopModules();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return names;
+	}
+
+	/**
+	 * 根据坐标签章 
+	 * @param suroce_path   待签文件路径
+	 * @param temp_path  签章后文件保存路径
+	 * @param username   纳税人识别号/容器号
+	 * @param pwd   纳税人校验码
+	 * @param xPosition  X轴坐标   毫米
+	 * @param yPosition  Y轴坐标   毫米
+	 * @param pageNum   PDF的页码
+	 * @param flag   是否添加时间戳
+	 * @param sealType   机构印章分类(纳税人印章为-1，机构公章为0，机构业务专用章为1)
+	 * @param opacity  印章透明度(取值范围为0~1之间)
+	 */
+	private String signByPosition(String suroce_path, String temp_path,
+			String username, String pwd, float xPosition, float yPosition,
+			int pageNum, boolean flag, String sealType, float opacity) {
+		String code2 ="";
+		if (sealType == "") {
+			code2 = NXServerSignShellUtils.pdfSgin(suroce_path, temp_path,
+				username, pwd, xPosition, yPosition, pageNum, flag, 
+				opacity);
+		}else {
+			code2 = NXServerSignShellUtils.pdfSgin(suroce_path, temp_path,
+					username, pwd, xPosition, yPosition, pageNum, flag, sealType,
+					opacity);
+		}
+		System.out.println("根据坐标签章返回代码==========" + code2);
+		return code2;
+	}
+
+	/**
+	 * 验章 
+	 * @param tempPdfPath
+	 * 
+	 */
+	private void verifySign(String tempPdfPath) {
+		/* 根据传入的已签章pdf路径验章 */
+		// 已签章pdf文件保存目录
+		// 秘钥容器，可以为空
+		NXServerSignShell signShell = new NXServerSignShell();
+		// String tempPdfPath =
+		// "E:\\pdfsigntest\\11200000000_Test_position_2.pdf";
+		/*不含时间戳的验证
+		 *verifySign
+		 *     第一个参数是待验证PDF文件路径
+		 *     第二个参数是容器号  必须填入
+		 */
+		String result = signShell.verifySign(tempPdfPath, "#rsa1");
+//		String resultInfo = signShell.getSignInfo(tempPdfPath, "#rsa1");
+		 System.out.println("根据验证返回代码==========" + result);
+	}
+	
+}

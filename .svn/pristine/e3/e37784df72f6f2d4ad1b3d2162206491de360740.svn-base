@@ -1,0 +1,11 @@
+package gov.gwssi.pdfSign;
+
+
+import javax.jws.WebService;
+
+@WebService
+public interface PDFSignI {
+	public void signWtxc(String xcbhs) throws Exception;
+	
+	public void signStxc(String xcbhs) throws Exception;
+}

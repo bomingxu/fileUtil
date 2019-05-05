@@ -1,0 +1,66 @@
+package gov.gwssi.util;
+
+import java.io.File;
+
+import org.artofsolving.jodconverter.OfficeDocumentConverter;
+import org.artofsolving.jodconverter.office.DefaultOfficeManagerConfiguration;
+import org.artofsolving.jodconverter.office.OfficeManager;
+
+
+/**
+ * OFFICE文档转换服务
+ */
+public class OpenOfficePDFConverter implements PDFConverter {
+
+	private static OfficeManager officeManager;
+	/** OpenOffice安装根目*/
+	private static String OFFICE_HOME = "C://OpenOffice";
+	private static int[] port = { 8100 };
+
+	@SuppressWarnings("static-access")
+	public void convert2PDF(String inputFile, String pdfFile, String extend) {
+		startService();
+		//pdfFile = pdfFile.replaceAll(" ", "").replaceAll("�?, "");
+		OfficeDocumentConverter converter = new OfficeDocumentConverter(
+				officeManager);
+		try {
+			converter.convert(new File(inputFile), new File(pdfFile));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		this.stopService();
+	}
+
+	public void convert2PDF(String inputFile, String extend) {
+		int splitIndex = inputFile.lastIndexOf(".");
+		String pdfFile = inputFile.substring(0, splitIndex)+".pdf";
+		this.convert2PDF(inputFile, pdfFile, extend);
+
+	}
+
+	public static void startService() {
+		DefaultOfficeManagerConfiguration configuration = new DefaultOfficeManagerConfiguration();
+		try {
+			// 准备启动服务
+			configuration.setOfficeHome(OFFICE_HOME);// 设置OpenOffice.org安装目录
+			// 设置转换端口，默认为8100
+			configuration.setPortNumbers(port);
+			// 设置任务执行超时�?分钟
+			configuration.setTaskExecutionTimeout(1000 * 60 * 5L);
+			// 设置任务队列超时�?4小时
+			configuration.setTaskQueueTimeout(1000 * 60 * 60 * 24L);
+
+			officeManager = configuration.buildOfficeManager();
+			officeManager.start(); // 启动服务
+		} catch (Exception e) {
+			System.out.println("启动服务失败，未找到目录");
+			e.printStackTrace();
+		}
+	}
+
+	public static void stopService() {
+		if (officeManager != null) {
+			officeManager.stop();
+		}
+	}
+}
