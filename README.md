@@ -1,2 +1,3 @@
-# fileUpload
-通过webservice进行附件上传
+# fileUtil
+通过webservice接口进行附件上传、下载、删除等操作。
+
